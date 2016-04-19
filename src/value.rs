@@ -1,5 +1,5 @@
 use libc::{c_char, c_uint, c_int};
-use ffi::prelude::LLVMValueRef;
+use ffi::prelude::*;
 use ffi::{core, LLVMAttribute};
 use ffi::LLVMLinkage;
 use std::ffi::CString;
@@ -432,3 +432,18 @@ impl GetContext for Value {
     }
 }
 to_str!(Value, LLVMPrintValueToString);
+
+pub struct PhiNode<'a>(pub &'a Value);
+
+impl<'a> PhiNode<'a> {
+    pub fn add_incoming(&self, in_coming_val: &'a Value, in_coming_bb:&'a BasicBlock) {
+        unsafe { core::LLVMAddIncoming(self.0.into(), (&[in_coming_val]).as_ptr() as *mut LLVMValueRef, 
+            (&[in_coming_bb]).as_ptr() as *mut LLVMBasicBlockRef, 0usize as c_uint)}
+    }
+}
+
+impl<'a> From<PhiNode<'a>> for &'a Value{
+    fn from(ty:PhiNode) -> &Value {
+        ty.0
+    }
+}
