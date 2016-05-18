@@ -48,6 +48,10 @@ impl Builder {
     pub fn position_at_end(&self, block: &BasicBlock) {
         unsafe { core::LLVMPositionBuilderAtEnd(self.into(), block.into()) }
     }
+    
+    pub fn get_insert_block(&self) -> &BasicBlock {
+        unsafe { core::LLVMGetInsertBlock(self.into()).into() }
+    }
     /// Build an instruction that returns from the function with void.
     pub fn build_ret_void(&self) -> &Value {
         unsafe { core::LLVMBuildRetVoid(self.into()) }.into()
@@ -150,6 +154,11 @@ impl Builder {
     bin_op!{build_ashr, LLVMBuildAShr}
     bin_op!{build_and, LLVMBuildAnd}
     bin_op!{build_or, LLVMBuildOr}
+    
+    /// Build a zext
+    pub fn build_zext(&self, a:&Value, b:&Type) -> &Value {
+        unsafe { core::LLVMBuildZExt(self.into(), a.into(), b.into(), NULL_NAME.as_ptr()) }.into()
+    }
     /// Build an instruction to compare two values with the predicate given.
     pub fn build_cmp(&self, a: &Value, b: &Value, pred: Predicate) -> &Value {
         let (at, bt) = (a.get_type(), b.get_type());
@@ -178,10 +187,9 @@ impl Builder {
             panic!("expected numbers, got {:?}", at)
         }
     }
-
-    pub fn build_phi(&self, ty:&Type) -> PhiNode {
-       let val = unsafe{ core::LLVMBuildPhi(self.into(), ty.into(), NULL_NAME.as_ptr())}.into();
-       PhiNode(val)
+    
+    pub fn build_phi(&self, ty:&Type) -> &PhiNode {
+        unsafe{ core::LLVMBuildPhi(self.into(), ty.into(), NULL_NAME.as_ptr()).into() }
     }
 }
 
