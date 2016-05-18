@@ -12,6 +12,8 @@ use std::ffi::CStr;
 pub trait Compile<'a> {
     /// Compile this value into a constant in the context given.
     fn compile(self, context: &'a Context) -> &'a Value;
+    /// Compile null value into a constant in the context given.
+    fn compile_null(context: &'a Context) -> &'a Value;
     /// Get the type descriptor for this type in the context given.
     fn get_type(context: &'a Context) -> &'a Type;
 }
@@ -21,6 +23,9 @@ macro_rules! compile_int(
             fn compile(self, context: &'a Context) -> &'a Value {
                 unsafe { core::LLVMConstInt(Self::get_type(context).into(), self as c_ulonglong, 0) }.into()
             }
+            fn compile_null(context: &'a Context) -> &'a Value {
+                unsafe { core::LLVMConstNull(Self::get_type(context).into()).into() }
+            }
             fn get_type($ctx: &'a Context) -> &'a Type {
                 let $ctx = $ctx.into();
                 unsafe { $ty_ex }.into()
@@ -29,6 +34,9 @@ macro_rules! compile_int(
         impl<'a> Compile<'a> for $sty {
             fn compile(self, context: &'a Context) -> &'a Value {
                 unsafe { core::LLVMConstInt(Self::get_type(context).into(), self as c_ulonglong, 0) }.into()
+            }
+            fn compile_null(context: &'a Context) -> &'a Value {
+                unsafe { core::LLVMConstNull(Self::get_type(context).into()).into() }
             }
             fn get_type($ctx: &'a Context) -> &'a Type {
                 let $ctx = $ctx.into();
@@ -44,6 +52,9 @@ impl<'a> Compile<'a> for bool {
     fn compile(self, context: &'a Context) -> &'a Value {
         unsafe { core::LLVMConstInt(Self::get_type(context).into(), self as c_ulonglong, 0) }.into()
     }
+    fn compile_null(context: &'a Context) -> &'a Value {
+        unsafe { core::LLVMConstNull(Self::get_type(context).into()).into() }
+    }
     fn get_type(ctx: &'a Context) -> &'a Type {
         unsafe { core::LLVMInt1TypeInContext(ctx.into()) }.into()
     }
@@ -51,6 +62,9 @@ impl<'a> Compile<'a> for bool {
 impl<'a> Compile<'a> for f32 {
     fn compile(self, context: &'a Context) -> &'a Value {
         unsafe { core::LLVMConstReal(Self::get_type(context).into(), self as f64) }.into()
+    }
+    fn compile_null(context: &'a Context) -> &'a Value {
+        unsafe { core::LLVMConstNull(Self::get_type(context).into()).into() }
     }
     fn get_type(ctx: &'a Context) -> &'a Type {
         unsafe { core::LLVMFloatTypeInContext(ctx.into()) }.into()
@@ -60,6 +74,9 @@ impl<'a> Compile<'a> for f64 {
     fn compile(self, context: &'a Context) -> &'a Value {
         unsafe { core::LLVMConstReal(Self::get_type(context).into(), self) }.into()
     }
+    fn compile_null(context: &'a Context) -> &'a Value {
+        unsafe { core::LLVMConstNull(Self::get_type(context).into()).into() }
+    }
     fn get_type(ctx: &'a Context) -> &'a Type {
         unsafe { core::LLVMDoubleTypeInContext(ctx.into()) }.into()
     }
@@ -67,6 +84,9 @@ impl<'a> Compile<'a> for f64 {
 impl<'a> Compile<'a> for char {
     fn compile(self, context: &'a Context) -> &'a Value {
         unsafe { core::LLVMConstInt(Self::get_type(context).into(), self as u32 as c_ulonglong, 0) }.into()
+    }
+    fn compile_null(context: &'a Context) -> &'a Value {
+        unsafe { core::LLVMConstNull(Self::get_type(context).into()).into() }
     }
     fn get_type(ctx: &'a Context) -> &'a Type {
         unsafe { core::LLVMInt32TypeInContext(ctx.into()) }.into()
@@ -79,6 +99,9 @@ impl<'a> Compile<'a> for *const c_char {
             core::LLVMConstStringInContext(context.into(), self, len as c_uint, 0).into()
         }
     }
+    fn compile_null(context: &'a Context) -> &'a Value {
+        unsafe { core::LLVMConstNull(Self::get_type(context).into()).into() }
+    }
     fn get_type(ctx: &'a Context) -> &'a Type {
         Type::new_pointer(Type::get::<c_char>(ctx))
     }
@@ -87,6 +110,9 @@ impl<'a> Compile<'a> for *const str {
     fn compile(self, context: &'a Context) -> &'a Value {
         unsafe { mem::transmute::<_, &str>(self) }.compile(context)
     }
+    fn compile_null(context: &'a Context) -> &'a Value {
+        unsafe { core::LLVMConstNull(Self::get_type(context).into()).into() }
+    }
     fn get_type(ctx: &'a Context) -> &'a Type {
         <&str as Compile<'a>>::get_type(ctx)
     }
@@ -94,6 +120,9 @@ impl<'a> Compile<'a> for *const str {
 impl<'a, 'b> Compile<'a> for &'b str {
     fn compile(self, context: &'a Context) -> &'a Value {
         self.as_bytes().compile(context)
+    }
+    fn compile_null(context: &'a Context) -> &'a Value {
+        unsafe { core::LLVMConstNull(Self::get_type(context).into()).into() }
     }
     fn get_type(ctx: &'a Context) -> &'a Type {
         <&'b [u8] as Compile<'a>>::get_type(ctx)
@@ -110,6 +139,9 @@ impl<'a, 'b> Compile<'a> for &'b [u8] {
             Value::new_struct(context, &[ptr, size], false)
         }
     }
+    fn compile_null(context: &'a Context) -> &'a Value {
+        unsafe { core::LLVMConstNull(Self::get_type(context).into()).into() }
+    }
     fn get_type(ctx: &'a Context) -> &'a Type {
         let usize_t = usize::get_type(ctx);
         StructType::new(ctx, &[usize_t, usize_t], false)
@@ -124,6 +156,9 @@ impl<'a> Compile<'a> for () {
     fn compile(self, context: &'a Context) -> &'a Value {
         unsafe { core::LLVMConstNull(Self::get_type(context).into()) }.into()
     }
+    fn compile_null(context: &'a Context) -> &'a Value {
+        unsafe { core::LLVMConstNull(Self::get_type(context).into()).into() }
+    }
     fn get_type(context: &'a Context) -> &'a Type {
         unsafe { core::LLVMVoidTypeInContext(context.into()) }.into()
     }
@@ -135,6 +170,9 @@ macro_rules! compile_tuple(
             fn compile(self, context: &'a Context) -> &'a Value {
                 let ($($oname, )+) = self;
                 Value::new_struct(context, &[$($oname.compile(context)),+], false)
+            }
+            fn compile_null(context: &'a Context) -> &'a Value {
+                unsafe { core::LLVMConstNull(Self::get_type(context).into()).into() }
             }
             fn get_type(context: &'a Context) -> &'a Type {
                 StructType::new(context, &[$($name::get_type(context)),+], false)
@@ -155,6 +193,9 @@ macro_rules! compile_array(
             fn compile(self, context: &'a Context) -> &'a Value {
                 let values:Vec<_> = self.iter().map(|&value| value.compile(context)).collect();
                 unsafe { core::LLVMConstVector(values.as_ptr() as *mut LLVMValueRef, $num) }.into()
+            }
+            fn compile_null(context: &'a Context) -> &'a Value {
+                unsafe { core::LLVMConstNull(Self::get_type(context).into()).into() }
             }
             fn get_type(context: &'a Context) -> &'a Type {
                 Type::new_vector(Type::get::<T>(context), $num)
@@ -180,6 +221,9 @@ macro_rules! compile_func(
                     core::LLVMConstIntToPtr(value.into(), Self::get_type(context).into())
                 }.into()
             }
+            fn compile_null(context: &'a Context) -> &'a Value {
+                unsafe { core::LLVMConstNull(Self::get_type(context).into()).into() }
+            }
             fn get_type(context: &'a Context) -> &'a Type {
                 Type::new_function(R::get_type(context), &[$($name::get_type(context)),*])
             }
@@ -191,6 +235,9 @@ macro_rules! compile_func(
                     let value = as_usize.compile(context);
                     core::LLVMConstIntToPtr(value.into(), Self::get_type(context).into())
                 }.into()
+            }
+            fn compile_null(context: &'a Context) -> &'a Value {
+                unsafe { core::LLVMConstNull(Self::get_type(context).into()).into() }
             }
             fn get_type(context: &'a Context) -> &'a Type {
                 Type::new_function(R::get_type(context), &[$($name::get_type(context)),*])
