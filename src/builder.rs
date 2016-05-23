@@ -48,7 +48,7 @@ impl Builder {
     pub fn position_at_end(&self, block: &BasicBlock) {
         unsafe { core::LLVMPositionBuilderAtEnd(self.into(), block.into()) }
     }
-    
+    /// Get a insert block.
     pub fn get_insert_block(&self) -> &BasicBlock {
         unsafe { core::LLVMGetInsertBlock(self.into()).into() }
     }
@@ -159,6 +159,10 @@ impl Builder {
     pub fn build_zext(&self, a:&Value, b:&Type) -> &Value {
         unsafe { core::LLVMBuildZExt(self.into(), a.into(), b.into(), NULL_NAME.as_ptr()) }.into()
     }
+    /// 
+    pub fn build_ui_to_fp(&self, a:&Value, b:&Type) ->&Value {
+        unsafe { core::LLVMBuildUIToFP(self.into(), a.into(), b.into(), NULL_NAME.as_ptr()) }.into()
+    }
     /// Build an instruction to compare two values with the predicate given.
     pub fn build_cmp(&self, a: &Value, b: &Value, pred: Predicate) -> &Value {
         let (at, bt) = (a.get_type(), b.get_type());
@@ -187,7 +191,7 @@ impl Builder {
             panic!("expected numbers, got {:?}", at)
         }
     }
-    
+    /// Build a phinode with given type.
     pub fn build_phi(&self, ty:&Type) -> &PhiNode {
         unsafe{ core::LLVMBuildPhi(self.into(), ty.into(), NULL_NAME.as_ptr()).into() }
     }
