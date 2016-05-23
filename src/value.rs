@@ -448,4 +448,9 @@ impl GetContext for Value {
     }
 }
 to_str!(Value, LLVMPrintValueToString);
-
+to_str!(Arg, LLVMPrintValueToString);
+to_str!(GlobalValue, LLVMPrintValueToString);
+to_str!(GlobalVariable, LLVMPrintValueToString);
+to_str!(Alias, LLVMPrintValueToString);
+to_str!(Function, LLVMPrintValueToString);
+to_str!(PhiNode, LLVMPrintValueToString);
